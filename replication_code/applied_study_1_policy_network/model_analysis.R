@@ -1,4 +1,4 @@
-file_path <- "/Users/annihong/Documents/Rprojects/multiplex-social-networks/revision/study1/"
+file_path <- ""
 
 
 ##LIBRARIES##
@@ -25,28 +25,7 @@ fit2 <- m_2$fit_res$stan_fit
 ##MODEL ESTIMATES##
 
 s1 <- multip2::summary.Mp2Model(m_1)
-
 s2 <- multip2::summary.Mp2Model(m_2)
-
-##CONVERGENCE CHECK## NEEDS REVISION (figure out PS or HC, change the stan model used to estimation)
-
-#S <- ggs(fit2, family = "PS|rho|Corr|fixed")
-S <- ggs(fit2, family = "PS")
-S <- ggs(fit2, family = "^Corr\[(\d+),(?=\d+\]$)(\d+)\]$")
-ggmcmc(S, file = paste0("diagnostics",".pdf"),  family = "PS|rho", param_page=6) #plot=c("traceplot", "running", "geweke"),
-ptrace <- ggs_traceplot(S, family = "^Corr") +
-      facet_wrap(~ Parameter, ncol = 6, scales = "free")
-p <- ggs_grb(S, family = "^mu") + facet_wrap(~ Parameter, ncol = 3, scales = "free")
-p <- ggs_grb(S, family = "PS_mu") + facet_wrap(~ Parameter, ncol = 3, scales = "free")
-ggs_geweke(S, family = "mu|rho") + facet_wrap(~ Parameter, ncol = 3, scales = "free")
-ggs_running(S, family = "Sigma") + facet_wrap(~ Parameter, ncol = 6, scales = "free")
-ggs_density(ggs(radon$s.radon, par_labels=P, family="sigma"))
-ptrace <- ggs_traceplot(S, family = "mu")
-ggs_running(S, family = "^PS_mu")
-ggs_Rhat(S, family = "^mu")
-ggs_geweke(S, family = "^mu")
-ggsave(ptrace)
-
 
 
 
@@ -121,78 +100,26 @@ sim_nets <- extract_network_draws(results$m_2, 1000)
 dep_net <- results$m_2$data$dep_net
 
 
-png("/Users/annihong/Documents/Rprojects/multiplex-social-networks/revision/study1/triad_census.png", height = 400, width = 1200, res = 100)
+png("triad_census.png", height = 400, width = 1200, res = 100)
 simulated_network_checks(sim_nets, dep_net, "Triad_census") 
 dev.off()
 
-png("/Users/annihong/Documents/Rprojects/multiplex-social-networks/revision/study1/id.png", height = 400, width = 1200, res = 100)
+png("id.png", height = 400, width = 1200, res = 100)
 simulated_network_checks(sim_nets, dep_net, "Indegree_distribution")
 dev.off()
 
-png("/Users/annihong/Documents/Rprojects/multiplex-social-networks/revision/study1/od.png", height = 400, width = 1200, res = 100)
+png("od.png", height = 400, width = 1200, res = 100)
 simulated_network_checks(sim_nets, dep_net, "Outdegree_distribution")
 dev.off()
 
-png("/Users/annihong/Documents/Rprojects/multiplex-social-networks/revision/study1/baselineGOF.png", height = 600, width = 1000, res = 100)
+png("baselineGOF.png", height = 600, width = 1000, res = 100)
 simulated_network_checks(sim_nets, dep_net, "multiplex_gof_baseline") + labs(title = "")
 dev.off()
 
 
-png("/Users/annihong/Documents/Rprojects/multiplex-social-networks/revision/study1/randomGOF.png", height = 600, width = 800, res = 100)
+png("randomGOF.png", height = 600, width = 800, res = 100)
 simulated_network_checks(sim_nets, dep_net, "multiplex_gof_random")  + labs(title = "")
 dev.off()
-
-######old way#####
-t = 3
-n = 30
-M_net <- lapply(dep_net, igraph::graph_from_adjacency_matrix)
-observed_stats <- as.data.frame(descriptive_stats(M_net))
-observed_stats_df <- data.frame("var" = rownames(observed_stats), "sim_stats" = observed_stats[,1])
-sim_stats <- observed_stats
-# post processing the generated results
-sim_sample_size = 4000
-fit = fit1 # use model 2 for gof
-#sim_nws <- tail(rstan::extract(fit)$y_tilde, sim_sample_size)
-sim_nws <-rstan::extract(fit)$y_tilde[sample(1:8000, sim_sample_size),]
-sim_nws_igraphs <- dyads_to_matrix_list(sim_nws, n, t, "igraph") #convert the simulated dyad data to igraph objects 
-
-descriptive_labels <- c("Pol Info Density", 
-                "Sci Info Density", 
-                "Influ Density",
-                "Pol Info Reciprocity", 
-                "Sci Info Reciprocity", 
-                "Influ Reciprocity",
-                "Pol X Sci Jaccard",
-                "Pol X Influ Jaccard",
-                "Influ X Sci Jaccard",
-                "Pol X Sci Cross Jaccard",
-                "Pol X Influ Cross Jaccard",
-                "Influ X Sci Cross Jaccard")
-
-#calculate the descriptive stats for all the simulated data 
-stats <- descriptive_stats_list(sim_nws_igraphs, avg=F)#[,c(1,2,3,7,8,9,4,5,6,10,11,12)]
-basic_stats <- gather(data.frame(stats), key="var", value="sim_stats")
-#varcov_stats <- gather(data.frame(stats[,7:22]), key="var", value="sim_stats")
-#basic_stats$var <- factor(basic_stats$var, colnames(stats)[c(1,2,3,7,8,9,4,5,6,10,11,12)])
-#levels(basic_stats$var) <- rev(levels(basic_stats$var))
-p3 <- ggplot(basic_stats,aes(x = var, y=sim_stats, fill=var),show.legend = FALSE) +
- stat_boxplot(geom ='errorbar') +
-    geom_boxplot() +
-    scale_fill_manual(values=c(rep("#219ebc", 3), rep("#5AB1BB", 3), rep("#fb8500", 3), rep("#ffb703", 3)))+
-    geom_point(data=observed_stats_df, mapping = aes(var,sim_stats), shape = 21, colour = "black", fill = "white", size=3) +
-    theme_bw() + 
-    theme(
-      legend.position="none",
-      plot.title = element_text(size=11),
-      axis.text.y = element_text(size=15, color = "black"),
-      axis.text.x = element_text(size=15, color = "black")) +
-    #scale_x_discrete(labels= descriptive_labels) + 
-    xlab("") +ylab("") + coord_flip()
-    #ggtitle("Descriptive Statistics Observed vs Simulated basic statistics") +
-
-
-ggsave(paste0(file_path, "multiplex_PPC_basic.png"), plot=p3,  width = 10, height = 5)
-
 
 
 
